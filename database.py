@@ -1,13 +1,10 @@
 import sqlite3
 
-conn = None
-cursor = None
+conn = sqlite3.connect('casino.db')
+cursor = conn.cursor()
 
 
-async def init_db():
-    global conn, cursor
-    conn = sqlite3.connect('casino.db')
-    cursor = conn.cursor()
+async def init_db():    
     cursor.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY,
         username TEXT,
