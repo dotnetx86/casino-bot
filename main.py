@@ -13,9 +13,11 @@ from database import init_db
 from handlers import (
     command_start_handler,
     help_command,
-    profile_command,
     balance_command,
-    leaderboard_command
+    leaderboard_command,
+    admin_setbalance_command,
+    admin_broadcast_command,
+    IsAdmin
 )
 from games.roulette import roulette_command
 from games.mines import mines_command, mines_callback
@@ -29,12 +31,13 @@ dp = Dispatcher()
 
 dp.message.register(command_start_handler, CommandStart())
 dp.message.register(help_command, Command("help"))
-dp.message.register(profile_command, Command("profile"))
 dp.message.register(balance_command, Command("balance"))
 dp.message.register(leaderboard_command, Command("leaderboard"))
 dp.message.register(roulette_command, Command("roulette"))
 dp.message.register(mines_command, Command("mines"))
 dp.message.register(towers_command, Command("towers"))
+dp.message.register(admin_setbalance_command, Command("admin_setbalance"), IsAdmin())
+dp.message.register(admin_broadcast_command, Command("admin_broadcast"), IsAdmin())
 
 dp.callback_query.register(mines_callback, lambda c: c.data.startswith("mines_"))
 dp.callback_query.register(towers_callback, lambda c: c.data.startswith("towers_"))

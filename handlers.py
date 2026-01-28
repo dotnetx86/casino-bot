@@ -1,13 +1,20 @@
-from aiogram import html
 from aiogram.types import Message
-from aiogram.filters import CommandStart, Command
-from database import add_user, get_user_balance, get_leaderboard
+from aiogram.filters import CommandStart, Command, Filter
+from database import add_user, get_user_balance, get_leaderboard, update_balance
 from database import cursor
+from os import getenv
+
+
+class IsAdmin(Filter):
+    async def __call__(self, message: Message) -> bool:
+        admin_ids = getenv("ADMIN_IDS", "").split(",")
+        admin_ids = [int(aid.strip()) for aid in admin_ids if aid.strip()]
+        return message.from_user.id in admin_ids
 
 
 async def command_start_handler(message: Message) -> None:
     add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
-    await message.answer(f"Hello, *{message.from_user.full_name}*!", parse_mode="MarkdownV2")
+    await message.answer(f"Hello, *{message.from_user.full_name}*!", parse_mode="Markdown")
 
 
 async def help_command(message: Message) -> None:
@@ -41,16 +48,6 @@ Good luck! 🍀
 """
     await message.answer(help_text, parse_mode="Markdown")
 
-
-async def profile_command(message: Message) -> None:
-    cursor.execute("SELECT username, balance FROM users WHERE id = ?", (message.from_user.id,))
-    user = cursor.fetchone()
-    if user:
-        await message.answer(f"Profile: {user[0]}, Balance: {user[1]}")
-    else:
-        await message.answer("Profile not found.")
-
-
 async def balance_command(message: Message) -> None:
     result = get_user_balance(message.from_user.id)
     if result:
@@ -66,3 +63,55 @@ async def leaderboard_command(message: Message) -> None:
         await message.answer(text)
     else:
         await message.answer("No users found.")
+
+
+async def admin_setbalance_command(message: Message) -> None:
+    args = message.text.split()
+    
+    if len(args) != 3:
+        await message.answer("Usage: /admin_setbalance <user_id> <balance>")
+        return
+    
+    try:
+        user_id = int(args[1])
+        balance = float(args[2])
+        
+        if user_id == -1:
+            user_id = message.from_user.id
+        
+        update_balance(user_id, balance)
+        await message.answer(f"✅ Set balance for user {user_id} to ₪{balance}")
+    except ValueError:
+        await message.answer("❌ Invalid user_id or balance. Please provide valid numbers.")
+
+
+async def admin_broadcast_command(message: Message) -> None:
+    args = message.text.split(maxsplit=1)
+    
+    if len(args) < 2:
+        await message.answer("Usage: /admin_broadcast <message>")
+        return
+    
+    broadcast_message = args[1]
+    
+    try:
+        cursor.execute("SELECT id FROM users")
+        users = cursor.fetchall()
+        
+        if not users:
+            await message.answer("❌ No users found to broadcast to.")
+            return
+        
+        bot = message.bot
+        
+        success_count = 0
+        for user in users:
+            try:
+                await bot.send_message(user[0], f"📢 {broadcast_message}")
+                success_count += 1
+            except Exception:
+                pass
+        
+        await message.answer(f"✅ Broadcast sent to {success_count}/{len(users)} users")
+    except Exception as e:
+        await message.answer(f"❌ Error during broadcast: {str(e)}")
