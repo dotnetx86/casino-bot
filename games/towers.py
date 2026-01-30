@@ -51,7 +51,6 @@ async def start_new_towers_game(message: Message, bet: int, difficulty: str, use
         random.shuffle(row)
         towers_board.extend(row)
 
-    winnings = bet
     game_state = {
         "user_id": user_id,
         "bet": bet,
@@ -59,7 +58,6 @@ async def start_new_towers_game(message: Message, bet: int, difficulty: str, use
         "board": towers_board,
         "floor": 4,
         "multiplier": 1.0,
-        "won": False,
         "columns": config["columns"],
         "multiplier_per_floor": config["multiplier_per_floor"],
         "game_over": False
@@ -67,7 +65,7 @@ async def start_new_towers_game(message: Message, bet: int, difficulty: str, use
     
     keyboard = create_towers_keyboard(game_state)
     game_msg = await message.answer(
-        f"🗼 Towers Game Started!\nDifficulty: {difficulty.upper()}\nBet: {bet}\nWinnings: {winnings}\n\nClick tiles to reveal. Hit a bomb = lose!",
+        f"🗼 Towers Game Started!\nDifficulty: {difficulty.upper()}\nBet: {bet}\nWinnings: {bet}\n\nClick tiles to reveal. Hit a bomb = lose!",
         reply_markup=keyboard
     )
     
@@ -176,7 +174,7 @@ def create_towers_keyboard(game_state: dict) -> InlineKeyboardMarkup:
             else:
                 button_text = "⬜"
             
-            if not game_over: # and floor <= row:
+            if not game_over:
                 row_buttons.append(
                     InlineKeyboardButton(text=button_text, callback_data=f"towers_{tile_idx}")
                 )
