@@ -1,13 +1,13 @@
 import random
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from database import get_user_balance, update_balance, cursor, conn
+from database import get_user_balance, update_balance, increment_balance, cursor, conn
 
 active_games = {}
 
 DIFFICULTIES = {
-    "easy": {"columns": 3, "bombs": 1},
-    "medium": {"columns": 2, "bombs": 1},
-    "hard": {"columns": 3, "bombs": 2}
+    "easy": {"columns": 3, "bombs": 1, "multiplier_per_floor": 1.4},
+    "medium": {"columns": 2, "bombs": 1, "multiplier_per_floor": 1.9},
+    "hard": {"columns": 3, "bombs": 2, "multiplier_per_floor": 2.8}
 }
 
 
@@ -41,7 +41,8 @@ async def start_new_towers_game(message: Message, bet: int, difficulty: str, use
         await message.answer("Insufficient balance.")
         return
     
-    initial_balance = result[0]
+    increment_balance(user_id, -bet)
+
     config = DIFFICULTIES[difficulty]
     
     towers_board = []
@@ -55,12 +56,12 @@ async def start_new_towers_game(message: Message, bet: int, difficulty: str, use
         "user_id": user_id,
         "bet": bet,
         "difficulty": difficulty,
-        "initial_balance": initial_balance,
         "board": towers_board,
         "floor": 4,
-        "winnings": winnings,
+        "multiplier": 1.0,
         "won": False,
         "columns": config["columns"],
+        "multiplier_per_floor": config["multiplier_per_floor"],
         "game_over": False
     }
     
@@ -93,22 +94,25 @@ async def towers_callback(callback_query: CallbackQuery) -> None:
     
     action = data.split("_")[1]
     
-    if action == "cashout":
-        balance = game_state["initial_balance"]
-        new_balance = balance + game_state["winnings"]
-        update_balance(user_id, new_balance)
-        
-        text = f"💰 Cashed out!\nWinnings: +{game_state['winnings']}\nNew balance: {new_balance}"
-        game_state["game_over"] = True
-        keyboard = create_towers_keyboard(game_state)
-        await callback_query.message.edit_text(text, reply_markup=keyboard)
-        await callback_query.answer(f"Won {game_state['winnings']}!")
-        return
-    
     if action == "newgame":
         await callback_query.answer()
         del active_games[game_key]
         await start_new_towers_game(callback_query.message, game_state["bet"], game_state["difficulty"], user_id)
+        return
+    
+    if game_state["game_over"]:
+        await callback_query.answer("Game over! Start a new game.", show_alert=True)
+        return
+    
+    if action == "cashout":        
+        winnings = int(game_state["bet"] * game_state["multiplier"])
+        increment_balance(user_id, winnings)
+        
+        text = f"💰 Cashed out!\nWinnings: +{winnings}"
+        game_state["game_over"] = True
+        keyboard = create_towers_keyboard(game_state)
+        await callback_query.message.edit_text(text, reply_markup=keyboard)
+        await callback_query.answer(f"Won {winnings}!")
         return
     
     try:
@@ -136,21 +140,18 @@ async def towers_callback(callback_query: CallbackQuery) -> None:
         
         text = f"💣 BOOM! You hit a bomb!\nLost: -{game_state['bet']}\n"
         
-        new_balance = game_state["initial_balance"] - game_state["bet"]
-        update_balance(user_id, new_balance)
-        
-        text += f"New balance: {new_balance}"
         keyboard = create_towers_keyboard(game_state)
         await callback_query.message.edit_text(text, reply_markup=keyboard)
         await callback_query.answer("You hit a bomb!")
     else:
-        game_state["winnings"] = 200 # game_state["bet"] * (1 + safe_tiles * 0.5)
-        
-        text = f"🗼 Towers Game\nDifficulty: {game_state['difficulty'].upper()}\nBet: {game_state['bet']}\nWinnings: {game_state['winnings']:.0f}\n\nClick tiles to reveal. Hit a bomb = lose!"
+        game_state["multiplier"] *= game_state["multiplier_per_floor"]
+        winnings = int(game_state["bet"] * game_state["multiplier"])
+
+        text = f"🗼 Towers Game\nDifficulty: {game_state['difficulty'].upper()}\nBet: {game_state['bet']}\nMultiplier: {game_state['multiplier']:.1f}x\nWinnings: {winnings}\n\nClick tiles to reveal. Hit a bomb = lose!"
         game_state["floor"] -= 1
         keyboard = create_towers_keyboard(game_state)
         await callback_query.message.edit_text(text, reply_markup=keyboard)
-        await callback_query.answer(f"Safe! Winnings: {game_state['winnings']:.0f}")
+        await callback_query.answer(f"Safe! Multiplier: {game_state['multiplier']:.1f}x")
 
 
 def create_towers_keyboard(game_state: dict) -> InlineKeyboardMarkup:
@@ -186,10 +187,18 @@ def create_towers_keyboard(game_state: dict) -> InlineKeyboardMarkup:
         
         keyboard.append(row_buttons)
     
-    action_row = [
-        InlineKeyboardButton(text="💰 Cash Out", callback_data="towers_cashout"),
-        InlineKeyboardButton(text="🔄 New Game", callback_data="towers_newgame")
-    ]
+    action_row = []
+    
+    if game_state["game_over"]:
+        action_row.append(
+            InlineKeyboardButton(text="🔄 New Game", callback_data="towers_newgame")
+        )
+    else:
+        action_row.append(
+            InlineKeyboardButton(text="💰 Cash Out", callback_data="towers_cashout")
+        )    
+    
+        
     keyboard.append(action_row)
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
