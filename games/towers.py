@@ -106,7 +106,7 @@ async def towers_callback(callback_query: CallbackQuery) -> None:
         winnings = int(game_state["bet"] * game_state["multiplier"])
         increment_balance(user_id, winnings)
         
-        text = f"💰 Cashed out!\nWinnings: +{winnings}"
+        text = f"💰 Cashed out!\nWinnings: +{winnings}\nBalance: {get_user_balance(user_id)[0]}"
         game_state["game_over"] = True
         keyboard = create_towers_keyboard(game_state)
         await callback_query.message.edit_text(text, reply_markup=keyboard)
@@ -136,7 +136,7 @@ async def towers_callback(callback_query: CallbackQuery) -> None:
     if hit_bomb:
         game_state["game_over"] = True
         
-        text = f"💣 BOOM! You hit a bomb!\nLost: -{game_state['bet']}\n"
+        text = f"💣 BOOM! You hit a bomb!\nLost: -{game_state['bet']}\nBalance: {get_user_balance(user_id)[0]}"
         
         keyboard = create_towers_keyboard(game_state)
         await callback_query.message.edit_text(text, reply_markup=keyboard)

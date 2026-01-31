@@ -2,24 +2,22 @@ import asyncio
 from dataclasses import dataclass
 import random
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from database import get_user_balance, update_balance, cursor, conn
+from database import get_user_balance, update_balance, increment_balance, cursor, conn
 
-@dataclass
-class rouletteSettings:
-    min_bet: int = 10
-    max_bet: int = 1000
-    red_probability: float = 0.45
-    black_probability: float = 0.45
-    yellow_probability: float = 0.1
-    red_coefficient: float = 2.0
-    black_coefficient: float = 2.0
-    yellow_coefficient: float = 9.0
+config = {
+    "red_coefficient": 2,
+    "black_coefficient": 2,
+    "yellow_coefficient": 14,
+    "red_probability": 0.45,
+    "black_probability": 0.45,
+    "yellow_probability": 0.1
+}
 
 async def roulette_command(message: Message) -> None:
     args = message.text.split()
     
     if len(args) < 3:
-        await message.answer("Usage: /roulette <bet_amount> <color>\nColors: red (🟥), black (⬛), yellow (🟨)")
+        await message.answer("Usage: /roulette <bet_amount> <color>\nColors: red (🟥), black (⬛), yellow (🟨)\nExample: /roulette 100 red")
         return
     
     try:
@@ -46,15 +44,17 @@ async def roulette_command(message: Message) -> None:
         await message.answer("Insufficient balance.")
         return
     
+    increment_balance(message.from_user.id, -bet)
+    
     pattern = ["🟥", "⬛", "🟨"]
-    spin = random.choices(pattern, k=24, weights=[rouletteSettings.red_probability, rouletteSettings.black_probability, rouletteSettings.yellow_probability])
+    spin = random.choices(pattern, k=24, weights=[config["red_probability"], config["black_probability"], config["yellow_probability"]])
     
     spin[16] = bet_color
     
-    spinning_msg = await message.answer(f"{"".join(spin[:9])}\n➖➖➖➖🔺➖➖➖➖")
+    line = "".join(spin[:9]) + "\n➖➖➖➖🔺➖➖➖➖"
+    spinning_msg = await message.answer(line)
     result_symbol = spin[19]
     
-    line = ""
     for i in range(1, 16):
         newline = "".join(spin[i:i+9]) + "\n➖➖➖➖🔺➖➖➖➖"
         if line != newline:
@@ -63,26 +63,18 @@ async def roulette_command(message: Message) -> None:
         await asyncio.sleep(0.05 + i * 0.025)
     await asyncio.sleep(0.5)
     
+    winnings = 0
     if result_symbol == bet_color:
-        match result_symbol:
-            case "🟥":
-                winnings = bet * rouletteSettings.red_coefficient
-                new_balance = result[0] - bet + winnings
-                result_text = f"🎉 You won! +{winnings}\nNew balance: {new_balance}"
-            case "⬛":
-                winnings = bet * rouletteSettings.black_coefficient
-                new_balance = result[0] - bet + winnings
-                result_text = f"🎉 You won! +{winnings}\nNew balance: {new_balance}"
-            case "🟨":
-                winnings = bet * rouletteSettings.yellow_coefficient
-                new_balance = result[0] - bet + winnings
-                result_text = f"🎉 You won! +{winnings}\nNew balance: {new_balance}"
-            case _:
-                new_balance = result[0] - bet
-                result_text = f"💔 You lost! -{bet}\nNew balance: {new_balance}"
+        if bet_color == "🟥":
+            winnings = bet * config["red_coefficient"]
+        elif bet_color == "⬛":
+            winnings = bet * config["black_coefficient"]
+        elif bet_color == "🟨":
+            winnings = bet * config["yellow_coefficient"]
+        increment_balance(message.from_user.id, winnings)
+        result_text = f"🎉 You won ₪{winnings}!\nBalance: ₪{get_user_balance(message.from_user.id)[0]}"
     else:
-        new_balance = result[0] - bet
-        result_text = f"💔 You lost! -{bet}\nNew balance: {new_balance}"
+        result_text = f"😞 You lost ₪{bet}.\nBalance: ₪{get_user_balance(message.from_user.id)[0]}"
     
     play_again_keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[
@@ -91,5 +83,3 @@ async def roulette_command(message: Message) -> None:
     )
     
     await spinning_msg.edit_text(f"{line}\n\n{result_text}", reply_markup=play_again_keyboard)
-    
-    update_balance(message.from_user.id, new_balance)

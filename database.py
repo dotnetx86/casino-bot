@@ -29,6 +29,9 @@ def update_balance(user_id: int, new_balance: float):
     cursor.execute("UPDATE users SET balance = ? WHERE id = ?", (new_balance, user_id))
     conn.commit()
 
+def increment_balance(user_id: int, amount: float):
+    cursor.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (amount, user_id))
+    conn.commit()
 
 def get_leaderboard(limit: int = 10):
     cursor.execute("SELECT name, balance FROM users ORDER BY balance DESC LIMIT ?", (limit,))
