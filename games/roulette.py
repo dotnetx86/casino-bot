@@ -72,9 +72,9 @@ async def roulette_command(message: Message) -> None:
         elif bet_color == "🟨":
             winnings = bet * config["yellow_coefficient"]
         increment_balance(message.from_user.id, winnings)
-        result_text = f"🎉 You won ₪{winnings}!\nBalance: ₪{get_user_balance(message.from_user.id)[0]}"
+        result_text = f"🎉 You won ⭐{winnings}!\nBalance: ⭐{get_user_balance(message.from_user.id)[0]}"
     else:
-        result_text = f"😞 You lost ₪{bet}.\nBalance: ₪{get_user_balance(message.from_user.id)[0]}"
+        result_text = f"😞 You lost ⭐{bet}.\nBalance: ⭐{get_user_balance(message.from_user.id)[0]}"
     
     play_again_keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[

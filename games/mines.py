@@ -51,7 +51,7 @@ async def start_new_mines_game(message: Message, bet: int, mines: int, user_id: 
     
     keyboard = create_mines_keyboard(game_state)
     game_msg = await message.answer(
-        f"🗼 Mines Game Started!\nMines: {mines}\nBet: {bet}\nWinnings: {bet}\n\nClick tiles to reveal. Hit a mine = lose!",
+        f"🗼 Mines Game Started!\nMines: {mines}\nBet: ⭐{bet}\nWinnings: ⭐{bet}\n\nClick tiles to reveal. Hit a mine = lose!",
         reply_markup=keyboard
     )
     
@@ -92,11 +92,11 @@ async def mines_callback(callback_query: CallbackQuery) -> None:
         winnings = game_state["winnings"]
         increment_balance(user_id, winnings)
         
-        text = f"💰 Cashed out!\nWinnings: +{winnings}\nBalance: {get_user_balance(user_id)[0]}"
+        text = f"💰 Cashed out!\nWinnings: ⭐{winnings}\nBalance: ⭐{get_user_balance(user_id)[0]}"
         game_state["game_over"] = True
         keyboard = create_mines_keyboard(game_state)
         await callback_query.message.edit_text(text, reply_markup=keyboard)
-        await callback_query.answer(f"Won {winnings}!")
+        await callback_query.answer(f"Won ⭐{winnings}!")
         return
     
     try:
@@ -120,7 +120,7 @@ async def mines_callback(callback_query: CallbackQuery) -> None:
     if hit_bomb:
         game_state["game_over"] = True
         
-        text = f"💣 BOOM! You hit a bomb!\nLost: -{game_state['bet']}\nBalance: {get_user_balance(user_id)[0]}"
+        text = f"💣 BOOM! You hit a bomb!\nLost: ⭐{game_state['bet']}\nBalance: ⭐{get_user_balance(user_id)[0]}"
         
         keyboard = create_mines_keyboard(game_state)
         await callback_query.message.edit_text(text, reply_markup=keyboard)
@@ -134,7 +134,7 @@ async def mines_callback(callback_query: CallbackQuery) -> None:
         winnings = int(game_state["bet"] * multiplier)
         game_state["winnings"] = winnings
 
-        text = f"🗼 Mines Game\nMines: {game_state['mines']}\nBet: {game_state['bet']}\nMultiplier: {multiplier:.2f}x\nWinnings: {winnings}\n\nClick tiles to reveal. Hit a mine = lose!"
+        text = f"🗼 Mines Game\nMines: {game_state['mines']}\nBet: ⭐{game_state['bet']}\nMultiplier: {multiplier:.2f}x\nWinnings: ⭐{winnings}\n\nClick tiles to reveal. Hit a mine = lose!"
         keyboard = create_mines_keyboard(game_state)
         await callback_query.message.edit_text(text, reply_markup=keyboard)
         await callback_query.answer(f"Safe! Multiplier: {multiplier:.2f}x")
