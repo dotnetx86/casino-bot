@@ -1,6 +1,6 @@
-from aiogram.types import Message
+from aiogram.types import Message, PreCheckoutQuery, SuccessfulPayment
 from aiogram.filters import CommandStart, Command, Filter
-from database import add_user, get_user_balance, get_leaderboard, update_balance
+from database import add_user, get_user_balance, get_leaderboard, update_balance, increment_balance
 from database import cursor
 from os import getenv
 
@@ -14,17 +14,32 @@ class IsAdmin(Filter):
 
 async def command_start_handler(message: Message) -> None:
     add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
-    await message.answer(f"Hello, *{message.from_user.full_name}*!", parse_mode="Markdown")
+    balance = get_user_balance(message.from_user.id)
+    
+    welcome_text = f"""
+🎰 **Welcome to Israel.game, {message.from_user.full_name}!** 🎰
+
+Your current balance: **⭐{balance[0]}**
+
+Get started by playing games or depositing more funds!
+
+💰 /deposit <amount> - Add Telegram Stars to your balance
+🎮 /help - View all available commands and games
+🏆 /leaderboard - Check top players
+
+Good luck and have fun! 🍀
+"""
+    await message.answer(welcome_text, parse_mode="Markdown")
 
 
 async def help_command(message: Message) -> None:
     help_text = """
-🎰 **Casino Bot Commands**
+🎰 **Israel.game Commands**
 
 *User Commands:*
-/start - Initialize your account
-/profile - View your profile information
+/start - Welcome message and balance check
 /balance - Check your current balance
+/deposit <amount> - Deposit Telegram Stars to your balance
 /leaderboard - View top 10 players
 
 *Games:*
@@ -51,15 +66,59 @@ Good luck! 🍀
 async def balance_command(message: Message) -> None:
     result = get_user_balance(message.from_user.id)
     if result:
-        await message.answer(f"Your balance: ₪{result[0]}")
+        await message.answer(f"Your balance: ⭐{result[0]}")
     else:
         await message.answer("Balance not found.")
+
+
+async def deposit_command(message: Message) -> None:
+    args = message.text.split()
+    if len(args) != 2:
+        await message.answer("Usage: /deposit <amount_in_stars>\nExample: /deposit 100")
+        return
+    
+    try:
+        amount = int(args[1])
+        if amount <= 0:
+            await message.answer("Amount must be positive.")
+            return
+    except ValueError:
+        await message.answer("Invalid amount. Please provide a number.")
+        return
+    
+    await message.bot.send_invoice(
+        chat_id=message.chat.id,
+        title="Deposit to Casino Bot",
+        description=f"Deposit {amount} Telegram Stars to your balance.",
+        payload=f"deposit_{message.from_user.id}_{amount}",
+        currency="XTR",
+        prices=[{"label": f"{amount} Stars", "amount": amount}],
+        start_parameter="deposit"
+    )
+
+
+async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery) -> None:
+    await pre_checkout_query.bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+
+async def successful_payment_handler(message: Message) -> None:
+    payment = message.successful_payment
+    payload = payment.invoice_payload
+    
+    if payload.startswith("deposit_"):
+        _, user_id_str, amount_str = payload.split("_")
+        user_id = int(user_id_str)
+        amount = int(amount_str)
+        
+        increment_balance(user_id, amount)
+        
+        await message.answer(f"✅ Deposit successful! Added ⭐{amount} to your balance.")
 
 
 async def leaderboard_command(message: Message) -> None:
     rows = get_leaderboard(10)
     if rows:
-        text = "Leaderboard:\n" + "\n".join(f"{row[0]}: {row[1]}" for row in rows)
+        text = "Leaderboard:\n" + "\n".join(f"{row[0]}: ⭐{row[1]}" for row in rows)
         await message.answer(text)
     else:
         await message.answer("No users found.")
@@ -80,7 +139,7 @@ async def admin_setbalance_command(message: Message) -> None:
             user_id = message.from_user.id
         
         update_balance(user_id, balance)
-        await message.answer(f"✅ Set balance for user {user_id} to ₪{balance}")
+        await message.answer(f"✅ Set balance for user {user_id} to ⭐{balance}")
     except ValueError:
         await message.answer("❌ Invalid user_id or balance. Please provide valid numbers.")
 
