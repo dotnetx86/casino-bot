@@ -23,7 +23,7 @@ Your current balance: **⭐{balance[0]}**
 
 Get started by playing games or depositing more funds!
 
-✡️ /random_text - Receive a random Torah text
+✡️ /random\_text - Receive a random Torah text
 💰 /deposit <amount> - Add Telegram Stars to your balance
 🎮 /help - View all available commands and games
 🏆 /leaderboard - Check top players
@@ -39,7 +39,7 @@ async def help_command(message: Message) -> None:
 
 *User Commands:*
 /start - Welcome message and balance check
-/random_text - Get a random Torah text
+/random\_text - Get a random Torah text
 /balance - Check your current balance
 /deposit <amount> - Deposit Telegram Stars to your balance
 /withdraw <amount> - Withdraw Stars from your balance
@@ -50,7 +50,7 @@ async def help_command(message: Message) -> None:
   Difficulties: easy (3 cols, 1 bomb), medium (2 cols, 1 bomb), hard (3 cols, 2 bombs)
   Example: /towers 100 easy
 
-/mines <bet> [grid_size] - Play Mines game
+/mines <bet> [grid\_size] - Play Mines game
   Grid sizes: 5, 10, 15 (default: 10)
   Example: /mines 100 10
 
@@ -67,9 +67,9 @@ Good luck! 🍀
     await message.answer(help_text, parse_mode="Markdown")
 
 async def random_text_command(message: Message) -> None:
-    response = requests.get("https://www.sefaria.org/api/texts/random?titles=Mishnah%20Peah")
+    response = requests.get("https://www.sefaria.org/api/texts/random?categories=Mishnah").json()
     
-    await message.answer(f"Random Torah text:\n<blockquote>{response.json()['text']}</blockquote>", parse_mode="html")
+    await message.answer(f"<blockquote>{response['text']}</blockquote>\n{response['ref']}", parse_mode="html")
 
 async def balance_command(message: Message) -> None:
     result = get_user_balance(message.from_user.id)
