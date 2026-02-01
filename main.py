@@ -13,8 +13,10 @@ from database import init_db
 from handlers import (
     command_start_handler,
     help_command,
+    random_text_command,
     balance_command,
     deposit_command,
+    withdraw_command,
     leaderboard_command,
     admin_setbalance_command,
     admin_broadcast_command,
@@ -34,8 +36,10 @@ dp = Dispatcher()
 
 dp.message.register(command_start_handler, CommandStart())
 dp.message.register(help_command, Command("help"))
+dp.message.register(random_text_command, Command("random_text"))
 dp.message.register(balance_command, Command("balance"))
 dp.message.register(deposit_command, Command("deposit"))
+dp.message.register(withdraw_command, Command("withdraw"))
 dp.message.register(leaderboard_command, Command("leaderboard"))
 dp.message.register(roulette_command, Command("roulette"))
 dp.message.register(mines_command, Command("mines"))

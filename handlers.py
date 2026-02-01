@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart, Command, Filter
 from database import add_user, get_user_balance, get_leaderboard, update_balance, increment_balance
 from database import cursor
 from os import getenv
-
+import requests
 
 class IsAdmin(Filter):
     async def __call__(self, message: Message) -> bool:
@@ -23,6 +23,7 @@ Your current balance: **⭐{balance[0]}**
 
 Get started by playing games or depositing more funds!
 
+✡️ /random_text - Receive a random Torah text
 💰 /deposit <amount> - Add Telegram Stars to your balance
 🎮 /help - View all available commands and games
 🏆 /leaderboard - Check top players
@@ -38,8 +39,10 @@ async def help_command(message: Message) -> None:
 
 *User Commands:*
 /start - Welcome message and balance check
+/random_text - Get a random Torah text
 /balance - Check your current balance
 /deposit <amount> - Deposit Telegram Stars to your balance
+/withdraw <amount> - Withdraw Stars from your balance
 /leaderboard - View top 10 players
 
 *Games:*
@@ -62,6 +65,11 @@ async def help_command(message: Message) -> None:
 Good luck! 🍀
 """
     await message.answer(help_text, parse_mode="Markdown")
+
+async def random_text_command(message: Message) -> None:
+    response = requests.get("https://www.sefaria.org/api/texts/random?titles=Mishnah%20Peah")
+    
+    await message.answer(f"Random Torah text:\n<blockquote>{response.json()['text']}</blockquote>", parse_mode="html")
 
 async def balance_command(message: Message) -> None:
     result = get_user_balance(message.from_user.id)
@@ -114,6 +122,8 @@ async def successful_payment_handler(message: Message) -> None:
         
         await message.answer(f"✅ Deposit successful! Added ⭐{amount} to your balance.")
 
+async def withdraw_command(message: Message) -> None:
+    await message.answer("Coming soon.")
 
 async def leaderboard_command(message: Message) -> None:
     rows = get_leaderboard(10)
